@@ -1,0 +1,32 @@
+[package]
+name = "smartrm"
+version = "0.1.0"
+edition = "2021"
+description = "File Lifecycle System — intelligent, reversible rm replacement"
+license = "CC-BY-NC-4.0"
+
+[lib]
+name = "smartrm"
+path = "src/lib.rs"
+
+[[bin]]
+name = "smartrm"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4", features = ["derive", "string"] }
+clap_complete = "4"
+rusqlite = { version = "0.31", features = ["bundled"] }
+ulid = "1"
+sha2 = "0.10"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dirs = "6"
+argon2 = "0.5"
+password-hash = { version = "0.5", features = ["getrandom"] }
+chrono = { version = "0.4", features = ["serde"] }
+glob = "0.3"
+libc = "0.2"
+
+[dev-dependencies]
+tempfile = "3"
