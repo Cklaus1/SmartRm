@@ -4,7 +4,7 @@
 
 SmartRM makes every delete reversible — and makes permanent destruction impossible without a human at the keyboard.
 
-![SmartRM Competitive Matrix](docs/assets/competitive-matrix.png)
+![SmartRM vs Every Other rm Replacement](docs/assets/competitive-matrix.jpg)
 
 ## What It Does
 
