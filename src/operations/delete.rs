@@ -254,6 +254,24 @@ fn archive_single_path(
         std::env::current_dir()?.join(input_path)
     };
 
+    // Classify and check danger level BEFORE reading metadata.
+    // Classification is purely path-based, while read_metadata recursively
+    // sizes directories — sizing must never run on a blocked path like `/`
+    // (it would walk the entire filesystem before the gate rejects it).
+    let classification = classifier::classify(&resolved);
+    match &classification.danger_level {
+        DangerLevel::Blocked(msg) => {
+            return Err(SmartrmError::DangerBlocked(msg.clone()));
+        }
+        DangerLevel::Warning(msg) if !ctx.yes_i_am_sure && !ctx.force => {
+            return Err(SmartrmError::DangerBlocked(format!(
+                "{}: use --yes-i-am-sure to proceed",
+                msg
+            )));
+        }
+        _ => {}
+    }
+
     // Check if path exists
     let meta_result = crate::fs::metadata::read_metadata(&resolved);
     let meta = match meta_result {
@@ -326,23 +344,6 @@ fn archive_single_path(
                 );
             }
         }
-    }
-
-    // Classify
-    let classification = classifier::classify(&resolved);
-
-    // Check danger level
-    match &classification.danger_level {
-        DangerLevel::Blocked(msg) => {
-            return Err(SmartrmError::DangerBlocked(msg.clone()));
-        }
-        DangerLevel::Warning(msg) if !ctx.yes_i_am_sure && !ctx.force => {
-            return Err(SmartrmError::DangerBlocked(format!(
-                "{}: use --yes-i-am-sure to proceed",
-                msg
-            )));
-        }
-        _ => {}
     }
 
     // Check disk space

@@ -42,9 +42,16 @@ pub fn read_metadata(path: &Path) -> io::Result<FileMetadata> {
     let mtime_ns = meta.mtime() * 1_000_000_000 + meta.mtime_nsec();
     let ctime_ns = meta.ctime() * 1_000_000_000 + meta.ctime_nsec();
 
+    // For directories, compute recursive size instead of inode size
+    let size_bytes = if file_type.is_dir() && !file_type.is_symlink() {
+        dir_size_recursive(path)
+    } else {
+        meta.len()
+    };
+
     Ok(FileMetadata {
         object_type,
-        size_bytes: meta.len(),
+        size_bytes,
         mode: meta.mode(),
         uid: meta.uid(),
         gid: meta.gid(),
@@ -52,4 +59,31 @@ pub fn read_metadata(path: &Path) -> io::Result<FileMetadata> {
         ctime_ns,
         link_target,
     })
+}
+
+/// Walk a directory tree and sum the sizes of all regular files.
+/// If any entry can't be read (permissions, etc.), it is silently skipped.
+fn dir_size_recursive(path: &Path) -> u64 {
+    let mut total: u64 = 0;
+    let mut stack = vec![path.to_path_buf()];
+
+    while let Some(dir) = stack.pop() {
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        for entry in entries.flatten() {
+            let ft = match entry.file_type() {
+                Ok(ft) => ft,
+                Err(_) => continue,
+            };
+            if ft.is_file() {
+                total += entry.metadata().map(|m| m.len()).unwrap_or(0);
+            } else if ft.is_dir() {
+                stack.push(entry.path());
+            }
+            // symlinks: skip (don't follow, don't count)
+        }
+    }
+    total
 }

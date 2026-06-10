@@ -222,7 +222,7 @@ pub fn list_archive_objects(
         }
         (None, Some(cur)) => {
             let mut stmt = conn.prepare(
-                "SELECT * FROM archive_objects WHERE created_at < ?1
+                "SELECT * FROM archive_objects WHERE state NOT IN ('purged', 'failed') AND created_at < ?1
                  ORDER BY created_at DESC LIMIT ?2",
             )?;
             let mapped = stmt.query_map(params![cur, limit], row_to_archive_object)?;
@@ -230,7 +230,7 @@ pub fn list_archive_objects(
         }
         (None, None) => {
             let mut stmt = conn.prepare(
-                "SELECT * FROM archive_objects
+                "SELECT * FROM archive_objects WHERE state NOT IN ('purged', 'failed')
                  ORDER BY created_at DESC LIMIT ?1",
             )?;
             let mapped = stmt.query_map(params![limit], row_to_archive_object)?;
@@ -242,6 +242,7 @@ pub fn list_archive_objects(
 }
 
 /// Count archive objects, optionally filtered by state.
+/// When no filter is given, excludes terminal states (purged, failed) to match list defaults.
 pub fn count_archive_objects(conn: &Connection, state_filter: Option<&str>) -> Result<i64> {
     let count: i64 = match state_filter {
         Some(state) => conn.query_row(
@@ -250,7 +251,7 @@ pub fn count_archive_objects(conn: &Connection, state_filter: Option<&str>) -> R
             |row| row.get(0),
         )?,
         None => conn.query_row(
-            "SELECT COUNT(*) FROM archive_objects",
+            "SELECT COUNT(*) FROM archive_objects WHERE state NOT IN ('purged', 'failed')",
             [],
             |row| row.get(0),
         )?,
